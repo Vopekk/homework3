@@ -25,3 +25,13 @@ reference/	- Genome, transcriptome and annotation
 Workflow:
 
 Tools:
+
+Publication:
+
+Authors: Blanca E. Himes et al.
+Publication date: 2014-06-13
+Journal: PLOS ONE, Volume 9, Issue 6, Article e99625
+Title: RNA-Seq Transcriptome Profiling Identifies CRISPLD2
+as a Glucocorticoid Responsive Gene that Modulates Cytokine
+Function in Airway Smooth Muscle Cells
+DOI: 10.1371/journal.pone.0099625
