@@ -1,0 +1,16 @@
+#Raw sequencing data
+raw_data/fastq/
+
+#Refrence files
+reference/
+
+#Specific files
+*.bam
+*.bai
+*.sam
+*.fastq
+*.fq
+
+#Conda environment
+.conda/
+conda_envs/
