@@ -2,12 +2,23 @@ SAMPLES = ["SRR1039508", "SRR1039512", "SRR1039518", "SRR1039517"]
 READS = ["1", "2"]
 
 rule all:
-	input:
-		expand(
-			"results/raw_fastqc/{sample}_{read}_fastqc.html",
-			sample = SAMPLES,
-			read =	READS
-		)
+    input:
+        expand(
+            "results/raw_fastqc/{sample}_{read}_fastqc.html",
+            sample=SAMPLES,
+            read=READS
+        ),
+        expand(
+            "results/trimmed/{sample}_{read}.fastq.gz",
+            sample=SAMPLES,
+            read=READS
+        ),
+        expand(
+            "results/fastp/{sample}.{format}",
+            sample=SAMPLES,
+            format=["html", "json"]
+        )
+
 rule fastqc_raw:
 	input:
 		"raw_data/fastq/{sample}_{read}.fastq"
@@ -19,3 +30,20 @@ rule fastqc_raw:
 		mkdir -p results/raw_fastqc
 		fastqc --outdir results/raw_fastqc {input}
 		"""
+rule fastp:
+    input:
+        r1="raw_data/fastq/{sample}_1.fastq",
+        r2="raw_data/fastq/{sample}_2.fastq"
+    output:
+        r1="results/trimmed/{sample}_1.fastq.gz",
+        r2="results/trimmed/{sample}_2.fastq.gz",
+        html="results/fastp/{sample}.html",
+        json="results/fastp/{sample}.json"
+    threads: 4
+    shell:
+        """
+        mkdir -p results/trimmed results/fastp
+        fastp -i {input.r1} -I {input.r2} -o {output.r1} \
+            -O {output.r2} -h {output.html} -j {output.json} \
+            --thread {threads}
+        """
