@@ -16,5 +16,6 @@ rule fastqc_raw:
 		zip = "results/fastqc/raw/{sample}_{read}_fastqc.zip"
 	shell:
 		"""
-		fastqc --outdir results/fastqc/raw {input}
+		mkdir -p results/raw_fastqc
+		fastqc --outdir results/raw_fastqc {input}
 		"""
