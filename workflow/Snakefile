@@ -1,0 +1,20 @@
+SAMPLES = ["SRR1039508", "SRR1039512", "SRR1039518", "SRR1039517"]
+READS = ["1", "2"]
+
+rule all:
+	input:
+		expand(
+			"results/fastqc/raw/{sample}_{read}_fastqc.html",
+			sample = SAMPLES,
+			read =	READS
+		)
+rule fastqc_raw:
+	input:
+		"raw_data/fastq/{sample}_{read}.fastq"
+	output:
+		html = "results/fastqc/raw/{sample}_{read}_fastqc.html",
+		zip = "results/fastqc/raw/{sample}_{read}_fastqc.zip"
+	shell:
+		"""
+		fastqc --outdir results/fastqc/raw {input}
+		"""
