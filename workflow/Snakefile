@@ -4,7 +4,7 @@ READS = ["1", "2"]
 rule all:
 	input:
 		expand(
-			"results/fastqc/raw/{sample}_{read}_fastqc.html",
+			"results/raw_fastqc/{sample}_{read}_fastqc.html",
 			sample = SAMPLES,
 			read =	READS
 		)
@@ -12,8 +12,8 @@ rule fastqc_raw:
 	input:
 		"raw_data/fastq/{sample}_{read}.fastq"
 	output:
-		html = "results/fastqc/raw/{sample}_{read}_fastqc.html",
-		zip = "results/fastqc/raw/{sample}_{read}_fastqc.zip"
+		html = "results/raw_fastqc/{sample}_{read}_fastqc.html",
+		zip = "results/raw_fastqc/{sample}_{read}_fastqc.zip"
 	shell:
 		"""
 		mkdir -p results/raw_fastqc

@@ -17,3 +17,11 @@ conda_envs/
 
 #Snakemake working directory
 .snakemake/
+
+#Analysis results
+results/
+
+#SLURM logs
+*.out
+*.err
+*.log
