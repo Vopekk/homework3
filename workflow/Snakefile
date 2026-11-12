@@ -47,3 +47,15 @@ rule fastp:
             -O {output.r2} -h {output.html} -j {output.json} \
             --thread {threads}
         """
+
+rule fastqc_trimmed:
+    input:
+        "results/trimmed/{sample}_{read}.fastq.gz"
+    output:
+        html="results/trimmed_fastqc/{sample}_{read}_fastqc.html",
+        zip="results/trimmed_fastqc/{sample}_{read}_fastqc.zip"
+    shell:
+        """
+        mkdir -p results/trimmed_fastqc
+        fastqc --outdir results/trimmed_fastqc {input}
+        """
