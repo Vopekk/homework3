@@ -1,0 +1,5 @@
+samples: ["SRR1039508", "SRR1039512", "SRR1039518", "SRR1039517"]
+reads: ["1", "2"]
+genome_fasta: "reference/GRCh38.primary_assembly.genome.fa"
+gtf: "reference/gencode.v50.primary_assembly.annotation.gtf"
+hisat2_index: "reference/hisat2_index/genome"
