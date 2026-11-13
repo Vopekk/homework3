@@ -1,5 +1,7 @@
-SAMPLES = ["SRR1039508", "SRR1039512", "SRR1039518", "SRR1039517"]
-READS = ["1", "2"]
+configfile: "config/config.yaml"
+
+SAMPLES = config["samples"]
+READS = config["reads"]
 
 
 rule all:
@@ -23,7 +25,12 @@ rule all:
             "results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.html",
             sample=SAMPLES,
             read=READS
-        )
+        ),
+        expand(
+            "results/aligned/{sample}.sorted.bam.bai",
+            sample=SAMPLES
+        ),
+        "results/featurecounts/counts.txt"
 
 
 rule fastqc_raw:
@@ -73,3 +80,60 @@ rule fastqc_trimmed:
         mv results/trimmed_fastqc/{wildcards.sample}_{wildcards.read}_fastqc.zip \
            {output.zip}
         """
+
+
+rule hisat2_index:
+    input:
+        config["genome_fasta"]
+    output:
+        expand(config["hisat2_index"] + ".{i}.ht2", i=range(1, 9))
+    params:
+        prefix=config["hisat2_index"]
+    threads: 8
+    conda: "../envs/align.yaml"
+    log: "logs/hisat2/index.log"
+    shell:
+        "hisat2-build -p {threads} {input} {params.prefix} &> {log}"
+
+
+rule hisat2_align:
+    input:
+        r1="results/trimmed/{sample}_1.fastq.gz",
+        r2="results/trimmed/{sample}_2.fastq.gz",
+        index=expand(config["hisat2_index"] + ".{i}.ht2", i=range(1, 9))
+    output:
+        "results/aligned/{sample}.sorted.bam"
+    params:
+        prefix=config["hisat2_index"]
+    threads: 8
+    conda: "../envs/align.yaml"
+    log: "logs/hisat2/{sample}.log"
+    shell:
+        """
+        hisat2 -p {threads} -x {params.prefix} -1 {input.r1} -2 {input.r2} 2> {log} \
+            | samtools sort -@ {threads} -o {output} -
+        """
+
+
+rule samtools_index:
+    input:
+        "results/aligned/{sample}.sorted.bam"
+    output:
+        "results/aligned/{sample}.sorted.bam.bai"
+    conda: "../envs/align.yaml"
+    log: "logs/samtools_index/{sample}.log"
+    shell:
+        "samtools index {input} &> {log}"
+
+
+rule featurecounts:
+    input:
+        bams=expand("results/aligned/{sample}.sorted.bam", sample=SAMPLES),
+        gtf=config["gtf"]
+    output:
+        "results/featurecounts/counts.txt"
+    threads: 8
+    conda: "../envs/align.yaml"
+    log: "logs/featurecounts.log"
+    shell:
+        "featureCounts -T {threads} -p --countReadPairs -s 0 -a {input.gtf} -o {output} {input.bams} &> {log}"
