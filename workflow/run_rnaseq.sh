@@ -10,4 +10,4 @@ cd ~/homework3
 source ~/my_bashrc
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate snakemake
-snakemake -s workflow/Snakefile --cores 8
+snakemake -s workflow/Snakefile --cores 8 --use-conda
