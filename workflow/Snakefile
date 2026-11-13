@@ -1,6 +1,7 @@
 SAMPLES = ["SRR1039508", "SRR1039512", "SRR1039518", "SRR1039517"]
 READS = ["1", "2"]
 
+
 rule all:
     input:
         expand(
@@ -17,19 +18,27 @@ rule all:
             "results/fastp/{sample}.{format}",
             sample=SAMPLES,
             format=["html", "json"]
+        ),
+        expand(
+            "results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.html",
+            sample=SAMPLES,
+            read=READS
         )
 
+
 rule fastqc_raw:
-	input:
-		"raw_data/fastq/{sample}_{read}.fastq"
-	output:
-		html = "results/raw_fastqc/{sample}_{read}_fastqc.html",
-		zip = "results/raw_fastqc/{sample}_{read}_fastqc.zip"
-	shell:
-		"""
-		mkdir -p results/raw_fastqc
-		fastqc --outdir results/raw_fastqc {input}
-		"""
+    input:
+        "raw_data/fastq/{sample}_{read}.fastq"
+    output:
+        html="results/raw_fastqc/{sample}_{read}_fastqc.html",
+        zip="results/raw_fastqc/{sample}_{read}_fastqc.zip"
+    shell:
+        """
+        mkdir -p results/raw_fastqc
+        fastqc --outdir results/raw_fastqc {input}
+        """
+
+
 rule fastp:
     input:
         r1="raw_data/fastq/{sample}_1.fastq",
@@ -48,14 +57,19 @@ rule fastp:
             --thread {threads}
         """
 
+
 rule fastqc_trimmed:
     input:
         "results/trimmed/{sample}_{read}.fastq.gz"
     output:
-        html="results/trimmed_fastqc/{sample}_{read}_fastqc.html",
-        zip="results/trimmed_fastqc/{sample}_{read}_fastqc.zip"
+        html="results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.html",
+        zip="results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.zip"
     shell:
         """
         mkdir -p results/trimmed_fastqc
         fastqc --outdir results/trimmed_fastqc {input}
+        mv results/trimmed_fastqc/{wildcards.sample}_{wildcards.read}_fastqc.html \
+           {output.html}
+        mv results/trimmed_fastqc/{wildcards.sample}_{wildcards.read}_fastqc.zip \
+           {output.zip}
         """
