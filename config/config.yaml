@@ -3,3 +3,5 @@ reads: ["1", "2"]
 genome_fasta: "reference/genome/GRCh38.primary_assembly.genome.fa"
 gtf: "reference/annotation/gencode.v50.primary_assembly.annotation.gtf"
 hisat2_index: "reference/hisat2_index/genome"
+transcriptome: "reference/transcriptome/gencode.v50.transcripts.fa.gz"
+kallisto_index: "reference/kallisto_index/transcripts.idx"
