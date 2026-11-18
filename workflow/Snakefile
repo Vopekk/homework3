@@ -30,8 +30,8 @@ rule all:
             "results/aligned/{sample}.sorted.bam.bai",
             sample=SAMPLES
         ),
-        "results/featurecounts/counts.txt"
-
+        "results/featurecounts/counts.txt",
+        expand("results/kallisto/{sample}/abundance.tsv", sample=SAMPLES)
 
 rule fastqc_raw:
     input:
@@ -137,3 +137,24 @@ rule featurecounts:
     log: "logs/featurecounts.log"
     shell:
         "featureCounts -T {threads} -p --countReadPairs -s 0 -a {input.gtf} -o {output} {input.bams} &> {log}"
+
+rule kallisto_index:
+    input: config["transcriptome"]
+    output: config["kallisto_index"]
+    conda: "../envs/kallisto.yaml"
+    log: "logs/kallisto/index.log"
+    shell: "kallisto index -i {output} {input} &> {log}"
+
+
+rule kallisto_quant:
+    input:
+        r1="results/trimmed/{sample}_1.fastq.gz",
+        r2="results/trimmed/{sample}_2.fastq.gz",
+        index=config["kallisto_index"]
+    output: "results/kallisto/{sample}/abundance.tsv"
+    params: outdir="results/kallisto/{sample}"
+    threads: 8
+    conda: "../envs/kallisto.yaml"
+    log: "logs/kallisto/{sample}.log"
+    shell:
+        "kallisto quant -i {input.index} -o {params.outdir} -t {threads} {input.r1} {input.r2} &> {log}"
