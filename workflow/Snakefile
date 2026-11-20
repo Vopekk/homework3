@@ -36,7 +36,9 @@ rule all:
         expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES),
-        expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES)
+        expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
+        expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
+        "results/deeptools/correlation_heatmap.pdf"
 
 rule fastqc_raw:
     input:
@@ -244,3 +246,33 @@ rule inner_distance:
     log: "logs/rseqc/inner_distance_{sample}.log"
     shell:
         "inner_distance.py -i {input.bam} -r {input.bed} -o {params.prefix} &> {log}"
+
+rule multibamsummary:
+    input:
+        bams=expand("results/aligned/{sample}.sorted.bam", sample=SAMPLES),
+        bais=expand("results/aligned/{sample}.sorted.bam.bai", sample=SAMPLES)
+    output:
+        "results/deeptools/multiBamSummary.npz"
+    params:
+        labels=" ".join(SAMPLES)
+    threads: 8
+    conda: "../envs/deeptools.yaml"
+    log: "logs/deeptools/multiBamSummary.log"
+    shell:
+        "multiBamSummary bins --bamfiles {input.bams} --labels {params.labels} -o {output} -p {threads} &> {log}"
+
+
+rule plot_correlation:
+    input:
+        "results/deeptools/multiBamSummary.npz"
+    output:
+        plot="results/deeptools/correlation_heatmap.pdf",
+        matrix="results/deeptools/correlation_matrix.tsv"
+    conda: "../envs/deeptools.yaml"
+    log: "logs/deeptools/plotCorrelation.log"
+    shell:
+        """
+        plotCorrelation -in {input} --corMethod spearman --skipZeros \
+            --whatToPlot heatmap --colorMap RdYlBu --plotNumbers \
+            -o {output.plot} --outFileCorMatrix {output.matrix} &> {log}
+        """
