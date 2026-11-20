@@ -35,7 +35,8 @@ rule all:
         expand("results/rseqc/bam_stat/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES),
-        expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES)
+        expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES),
+        expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES)
 
 rule fastqc_raw:
     input:
@@ -230,3 +231,16 @@ rule bed_subset:
     output: config["bed_subset"]
     log: "logs/rseqc/bed_subset.log"
     shell: "shuf -n 10000 --random-source=<(yes) {input} > {output} 2> {log}"
+
+rule inner_distance:
+    input:
+        bam="results/aligned/{sample}.sorted.bam",
+        bed=config["bed_subset"]
+    output:
+        "results/rseqc/inner_distance/{sample}.inner_distance_freq.txt"
+    params:
+        prefix="results/rseqc/inner_distance/{sample}"
+    conda: "../envs/rseqc.yaml"
+    log: "logs/rseqc/inner_distance_{sample}.log"
+    shell:
+        "inner_distance.py -i {input.bam} -r {input.bed} -o {params.prefix} &> {log}"
