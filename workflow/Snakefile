@@ -40,7 +40,8 @@ rule all:
         expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
         "results/deeptools/correlation_heatmap.pdf",
         "results/deeptools/correlation_heatmap.pdf",
-        "results/deeptools/pca.pdf"
+        "results/deeptools/pca.pdf",
+        "results/multiqc/multiqc_report.html"
 
 rule fastqc_raw:
     input:
@@ -289,3 +290,31 @@ rule plot_pca:
     log: "logs/deeptools/plotPCA.log"
     shell:
         "plotPCA -in {input} -o {output.plot} --outFileNameData {output.data} &> {log}"
+
+rule multiqc:
+    input:
+        expand("results/raw_fastqc/{sample}_{read}_fastqc.zip", sample=SAMPLES, read=READS),
+        expand("results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.zip", sample=SAMPLES, read=READS),
+        expand("results/fastp/{sample}.json", sample=SAMPLES),
+        expand("logs/hisat2/{sample}.log", sample=SAMPLES),
+        "results/featurecounts/counts.txt",
+        expand("results/kallisto/{sample}/abundance.tsv", sample=SAMPLES),
+                expand("logs/kallisto/{sample}.log", sample=SAMPLES),
+        expand("results/rseqc/bam_stat/{sample}.txt", sample=SAMPLES),
+        expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES),
+        expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES),
+        expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES),
+        expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
+        "results/deeptools/correlation_matrix.tsv",
+        "results/deeptools/pca_data.tsv"
+    output:
+        "results/multiqc/multiqc_report.html"
+    conda: "../envs/multiqc.yaml"
+    log: "logs/multiqc.log"
+    shell:
+        """
+        multiqc results/raw_fastqc results/trimmed_fastqc results/fastp \
+            results/featurecounts results/kallisto results/rseqc \
+            results/deeptools logs/hisat2 logs/kallisto \
+            -o results/multiqc -n multiqc_report.html -f &> {log}
+        """
