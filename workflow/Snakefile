@@ -38,7 +38,9 @@ rule all:
         expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES),
         expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
         expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
-        "results/deeptools/correlation_heatmap.pdf"
+        "results/deeptools/correlation_heatmap.pdf",
+        "results/deeptools/correlation_heatmap.pdf",
+        "results/deeptools/pca.pdf"
 
 rule fastqc_raw:
     input:
@@ -276,3 +278,14 @@ rule plot_correlation:
             --whatToPlot heatmap --colorMap RdYlBu --plotNumbers \
             -o {output.plot} --outFileCorMatrix {output.matrix} &> {log}
         """
+
+rule plot_pca:
+    input:
+        "results/deeptools/multiBamSummary.npz"
+    output:
+        plot="results/deeptools/pca.pdf",
+        data="results/deeptools/pca_data.tsv"
+    conda: "../envs/deeptools.yaml"
+    log: "logs/deeptools/plotPCA.log"
+    shell:
+        "plotPCA -in {input} -o {output.plot} --outFileNameData {output.data} &> {log}"
