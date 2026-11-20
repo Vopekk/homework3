@@ -33,7 +33,8 @@ rule all:
         "results/featurecounts/counts.txt",
         expand("results/kallisto/{sample}/abundance.tsv", sample=SAMPLES),
         expand("results/rseqc/bam_stat/{sample}.txt", sample=SAMPLES),
-        expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES)
+        expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES),
+        expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES)
 
 rule fastqc_raw:
     input:
@@ -197,3 +198,14 @@ rule infer_experiment:
     log: "logs/rseqc/infer_experiment_{sample}.log"
     shell:
         "infer_experiment.py -i {input.bam} -r {input.bed} > {output} 2> {log}"
+
+rule read_distribution:
+    input:
+        bam="results/aligned/{sample}.sorted.bam",
+        bed=config["bed12"]
+    output:
+        "results/rseqc/read_distribution/{sample}.txt"
+    conda: "../envs/rseqc.yaml"
+    log: "logs/rseqc/read_distribution_{sample}.log"
+    shell:
+        "read_distribution.py -i {input.bam} -r {input.bed} > {output} 2> {log}"
