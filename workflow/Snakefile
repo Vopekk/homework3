@@ -34,7 +34,8 @@ rule all:
         expand("results/kallisto/{sample}/abundance.tsv", sample=SAMPLES),
         expand("results/rseqc/bam_stat/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES),
-        expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES)
+        expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES),
+        expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES)
 
 rule fastqc_raw:
     input:
@@ -209,3 +210,23 @@ rule read_distribution:
     log: "logs/rseqc/read_distribution_{sample}.log"
     shell:
         "read_distribution.py -i {input.bam} -r {input.bed} > {output} 2> {log}"
+
+rule gene_body_coverage:
+    input:
+        bam="results/aligned/{sample}.sorted.bam",
+        bai="results/aligned/{sample}.sorted.bam.bai",
+        bed=config["bed_subset"]
+    output:
+        "results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt"
+    params:
+        prefix="results/rseqc/gene_body_coverage/{sample}"
+    conda: "../envs/rseqc.yaml"
+    log: "logs/rseqc/gene_body_coverage_{sample}.log"
+    shell:
+        "geneBody_coverage.py -i {input.bam} -r {input.bed} -o {params.prefix} &> {log}"
+
+rule bed_subset:
+    input: config["bed12"]
+    output: config["bed_subset"]
+    log: "logs/rseqc/bed_subset.log"
+    shell: "shuf -n 10000 --random-source=<(yes) {input} > {output} 2> {log}"
