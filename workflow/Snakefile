@@ -2,34 +2,15 @@ configfile: "config/config.yaml"
 
 SAMPLES = config["samples"]
 READS = config["reads"]
+FASTQ = config["fastq_dir"] + "/{sample}_{read}." + config["fastq_ext"]
 
 
 rule all:
     input:
-        expand(
-            "results/raw_fastqc/{sample}_{read}_fastqc.html",
-            sample=SAMPLES,
-            read=READS
-        ),
-        expand(
-            "results/trimmed/{sample}_{read}.fastq.gz",
-            sample=SAMPLES,
-            read=READS
-        ),
-        expand(
-            "results/fastp/{sample}.{format}",
-            sample=SAMPLES,
-            format=["html", "json"]
-        ),
-        expand(
-            "results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.html",
-            sample=SAMPLES,
-            read=READS
-        ),
-        expand(
-            "results/aligned/{sample}.sorted.bam.bai",
-            sample=SAMPLES
-        ),
+        expand("results/raw_fastqc/{sample}_{read}_fastqc.html", sample=SAMPLES, read=READS),
+        expand("results/fastp/{sample}.html", sample=SAMPLES),
+        expand("results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.html", sample=SAMPLES, read=READS),
+        expand("results/aligned/{sample}.sorted.bam.bai", sample=SAMPLES),
         "results/featurecounts/counts.txt",
         expand("results/kallisto/{sample}/abundance.tsv", sample=SAMPLES),
         expand("results/rseqc/bam_stat/{sample}.txt", sample=SAMPLES),
@@ -37,41 +18,44 @@ rule all:
         expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt", sample=SAMPLES),
         expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
-        expand("results/rseqc/inner_distance/{sample}.inner_distance_freq.txt", sample=SAMPLES),
-        "results/deeptools/correlation_heatmap.pdf",
         "results/deeptools/correlation_heatmap.pdf",
         "results/deeptools/pca.pdf",
         "results/multiqc/multiqc_report.html"
 
+
+# 2.1 Read preprocessing
+
 rule fastqc_raw:
     input:
-        "raw_data/fastq/{sample}_{read}.fastq"
+        config["fastq_dir"] + "/{sample}_{read}." + config["fastq_ext"]
     output:
         html="results/raw_fastqc/{sample}_{read}_fastqc.html",
         zip="results/raw_fastqc/{sample}_{read}_fastqc.zip"
+    threads: 2
+    resources: mem_mb=2000
+    conda: "../envs/qc.yaml"
+    log: "logs/fastqc_raw/{sample}_{read}.log"
     shell:
-        """
-        mkdir -p results/raw_fastqc
-        fastqc --outdir results/raw_fastqc {input}
-        """
+        "fastqc -t {threads} --outdir results/raw_fastqc {input} &> {log}"
 
 
 rule fastp:
     input:
-        r1="raw_data/fastq/{sample}_1.fastq",
-        r2="raw_data/fastq/{sample}_2.fastq"
+        r1=config["fastq_dir"] + "/{sample}_1." + config["fastq_ext"],
+        r2=config["fastq_dir"] + "/{sample}_2." + config["fastq_ext"]
     output:
         r1="results/trimmed/{sample}_1.fastq.gz",
         r2="results/trimmed/{sample}_2.fastq.gz",
         html="results/fastp/{sample}.html",
         json="results/fastp/{sample}.json"
     threads: 4
+    resources: mem_mb=4000
+    conda: "../envs/qc.yaml"
+    log: "logs/fastp/{sample}.log"
     shell:
         """
-        mkdir -p results/trimmed results/fastp
-        fastp -i {input.r1} -I {input.r2} -o {output.r1} \
-            -O {output.r2} -h {output.html} -j {output.json} \
-            --thread {threads}
+        fastp -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} \
+            -h {output.html} -j {output.json} --thread {threads} &> {log}
         """
 
 
@@ -81,16 +65,21 @@ rule fastqc_trimmed:
     output:
         html="results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.html",
         zip="results/trimmed_fastqc/{sample}_{read}_trimmed_fastqc.zip"
+    params:
+        prefix="results/trimmed_fastqc/{sample}_{read}_fastqc"
+    threads: 2
+    resources: mem_mb=2000
+    conda: "../envs/qc.yaml"
+    log: "logs/fastqc_trimmed/{sample}_{read}.log"
     shell:
         """
-        mkdir -p results/trimmed_fastqc
-        fastqc --outdir results/trimmed_fastqc {input}
-        mv results/trimmed_fastqc/{wildcards.sample}_{wildcards.read}_fastqc.html \
-           {output.html}
-        mv results/trimmed_fastqc/{wildcards.sample}_{wildcards.read}_fastqc.zip \
-           {output.zip}
+        fastqc -t {threads} --outdir results/trimmed_fastqc {input} &> {log}
+        mv {params.prefix}.html {output.html}
+        mv {params.prefix}.zip {output.zip}
         """
 
+
+# 2.2 Alignment-based quantification
 
 rule hisat2_index:
     input:
@@ -100,6 +89,7 @@ rule hisat2_index:
     params:
         prefix=config["hisat2_index"]
     threads: 8
+    resources: mem_mb=32000
     conda: "../envs/align.yaml"
     log: "logs/hisat2/index.log"
     shell:
@@ -116,6 +106,7 @@ rule hisat2_align:
     params:
         prefix=config["hisat2_index"]
     threads: 8
+    resources: mem_mb=16000
     conda: "../envs/align.yaml"
     log: "logs/hisat2/{sample}.log"
     shell:
@@ -130,6 +121,7 @@ rule samtools_index:
         "results/aligned/{sample}.sorted.bam"
     output:
         "results/aligned/{sample}.sorted.bam.bai"
+    resources: mem_mb=2000
     conda: "../envs/align.yaml"
     log: "logs/samtools_index/{sample}.log"
     shell:
@@ -142,18 +134,28 @@ rule featurecounts:
         gtf=config["gtf"]
     output:
         "results/featurecounts/counts.txt"
+    params:
+        strand=config["strandedness"]
     threads: 8
+    resources: mem_mb=8000
     conda: "../envs/align.yaml"
     log: "logs/featurecounts.log"
     shell:
-        "featureCounts -T {threads} -p --countReadPairs -s 0 -a {input.gtf} -o {output} {input.bams} &> {log}"
+        "featureCounts -T {threads} -p --countReadPairs -s {params.strand} -a {input.gtf} -o {output} {input.bams} &> {log}"
+
+
+# 2.3 Alignment-free quantification
 
 rule kallisto_index:
-    input: config["transcriptome"]
-    output: config["kallisto_index"]
+    input:
+        config["transcriptome"]
+    output:
+        config["kallisto_index"]
+    resources: mem_mb=32000
     conda: "../envs/kallisto.yaml"
     log: "logs/kallisto/index.log"
-    shell: "kallisto index -i {output} {input} &> {log}"
+    shell:
+        "kallisto index -i {output} {input} &> {log}"
 
 
 rule kallisto_quant:
@@ -161,19 +163,26 @@ rule kallisto_quant:
         r1="results/trimmed/{sample}_1.fastq.gz",
         r2="results/trimmed/{sample}_2.fastq.gz",
         index=config["kallisto_index"]
-    output: "results/kallisto/{sample}/abundance.tsv"
-    params: outdir="results/kallisto/{sample}"
+    output:
+        "results/kallisto/{sample}/abundance.tsv"
+    params:
+        outdir="results/kallisto/{sample}"
     threads: 8
+    resources: mem_mb=16000
     conda: "../envs/kallisto.yaml"
     log: "logs/kallisto/{sample}.log"
     shell:
         "kallisto quant -i {input.index} -o {params.outdir} -t {threads} {input.r1} {input.r2} &> {log}"
+
+
+# Alignment quality assessment
 
 rule gtf_to_bed12:
     input:
         config["gtf"]
     output:
         config["bed12"]
+    resources: mem_mb=8000
     conda: "../envs/rseqc.yaml"
     log: "logs/rseqc/gtf_to_bed12.log"
     shell:
@@ -184,11 +193,24 @@ rule gtf_to_bed12:
         """
 
 
+rule bed_subset:
+    input:
+        config["bed12"]
+    output:
+        config["bed_subset"]
+    params:
+        n=config["bed_subset_size"]
+    log: "logs/rseqc/bed_subset.log"
+    shell:
+        "shuf -n {params.n} --random-source=<(yes) {input} > {output} 2> {log}"
+
+
 rule bam_stat:
     input:
         "results/aligned/{sample}.sorted.bam"
     output:
         "results/rseqc/bam_stat/{sample}.txt"
+    resources: mem_mb=4000
     conda: "../envs/rseqc.yaml"
     log: "logs/rseqc/bam_stat_{sample}.log"
     shell:
@@ -201,10 +223,12 @@ rule infer_experiment:
         bed=config["bed12"]
     output:
         "results/rseqc/infer_experiment/{sample}.txt"
+    resources: mem_mb=4000
     conda: "../envs/rseqc.yaml"
     log: "logs/rseqc/infer_experiment_{sample}.log"
     shell:
         "infer_experiment.py -i {input.bam} -r {input.bed} > {output} 2> {log}"
+
 
 rule read_distribution:
     input:
@@ -212,10 +236,12 @@ rule read_distribution:
         bed=config["bed12"]
     output:
         "results/rseqc/read_distribution/{sample}.txt"
+    resources: mem_mb=8000
     conda: "../envs/rseqc.yaml"
     log: "logs/rseqc/read_distribution_{sample}.log"
     shell:
         "read_distribution.py -i {input.bam} -r {input.bed} > {output} 2> {log}"
+
 
 rule gene_body_coverage:
     input:
@@ -226,16 +252,12 @@ rule gene_body_coverage:
         "results/rseqc/gene_body_coverage/{sample}.geneBodyCoverage.txt"
     params:
         prefix="results/rseqc/gene_body_coverage/{sample}"
+    resources: mem_mb=8000
     conda: "../envs/rseqc.yaml"
     log: "logs/rseqc/gene_body_coverage_{sample}.log"
     shell:
         "geneBody_coverage.py -i {input.bam} -r {input.bed} -o {params.prefix} &> {log}"
 
-rule bed_subset:
-    input: config["bed12"]
-    output: config["bed_subset"]
-    log: "logs/rseqc/bed_subset.log"
-    shell: "shuf -n 10000 --random-source=<(yes) {input} > {output} 2> {log}"
 
 rule inner_distance:
     input:
@@ -245,10 +267,12 @@ rule inner_distance:
         "results/rseqc/inner_distance/{sample}.inner_distance_freq.txt"
     params:
         prefix="results/rseqc/inner_distance/{sample}"
+    resources: mem_mb=8000
     conda: "../envs/rseqc.yaml"
     log: "logs/rseqc/inner_distance_{sample}.log"
     shell:
         "inner_distance.py -i {input.bam} -r {input.bed} -o {params.prefix} &> {log}"
+
 
 rule multibamsummary:
     input:
@@ -259,6 +283,7 @@ rule multibamsummary:
     params:
         labels=" ".join(SAMPLES)
     threads: 8
+    resources: mem_mb=16000
     conda: "../envs/deeptools.yaml"
     log: "logs/deeptools/multiBamSummary.log"
     shell:
@@ -271,6 +296,7 @@ rule plot_correlation:
     output:
         plot="results/deeptools/correlation_heatmap.pdf",
         matrix="results/deeptools/correlation_matrix.tsv"
+    resources: mem_mb=4000
     conda: "../envs/deeptools.yaml"
     log: "logs/deeptools/plotCorrelation.log"
     shell:
@@ -280,16 +306,21 @@ rule plot_correlation:
             -o {output.plot} --outFileCorMatrix {output.matrix} &> {log}
         """
 
+
 rule plot_pca:
     input:
         "results/deeptools/multiBamSummary.npz"
     output:
         plot="results/deeptools/pca.pdf",
         data="results/deeptools/pca_data.tsv"
+    resources: mem_mb=4000
     conda: "../envs/deeptools.yaml"
     log: "logs/deeptools/plotPCA.log"
     shell:
         "plotPCA -in {input} -o {output.plot} --outFileNameData {output.data} &> {log}"
+
+
+#2.4 Reporting
 
 rule multiqc:
     input:
@@ -298,8 +329,8 @@ rule multiqc:
         expand("results/fastp/{sample}.json", sample=SAMPLES),
         expand("logs/hisat2/{sample}.log", sample=SAMPLES),
         "results/featurecounts/counts.txt",
+        expand("logs/kallisto/{sample}.log", sample=SAMPLES),
         expand("results/kallisto/{sample}/abundance.tsv", sample=SAMPLES),
-                expand("logs/kallisto/{sample}.log", sample=SAMPLES),
         expand("results/rseqc/bam_stat/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/infer_experiment/{sample}.txt", sample=SAMPLES),
         expand("results/rseqc/read_distribution/{sample}.txt", sample=SAMPLES),
@@ -309,6 +340,7 @@ rule multiqc:
         "results/deeptools/pca_data.tsv"
     output:
         "results/multiqc/multiqc_report.html"
+    resources: mem_mb=4000
     conda: "../envs/multiqc.yaml"
     log: "logs/multiqc.log"
     shell:

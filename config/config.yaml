@@ -7,3 +7,7 @@ transcriptome: "reference/transcriptome/gencode.v50.transcripts.fa.gz"
 kallisto_index: "reference/kallisto_index/transcripts.idx"
 bed12: "reference/annotation/gencode.v50.primary_assembly.annotation.bed12"
 bed_subset: "reference/annotation/gene_body_subset.bed12"
+fastq_dir: "raw_data/fastq"
+fastq_ext: "fastq"
+strandedness: 0
+bed_subset_size: 10000
