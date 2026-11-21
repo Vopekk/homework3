@@ -3,7 +3,7 @@
 #SBATCH --partition=main
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=workflow/rnaseq_%j.log
 #SBATCH --error=workflow/rnaseq_%j.err
 
