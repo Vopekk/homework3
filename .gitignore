@@ -1,7 +1,7 @@
 #Raw sequencing data
 raw_data/fastq/
 
-#Refrence files
+#Reference files
 reference/
 
 #Specific files
@@ -10,6 +10,8 @@ reference/
 *.sam
 *.fastq
 *.fq
+*.fastq.gz
+*.fq.gz
 
 #Conda environment
 .conda/
@@ -20,8 +22,10 @@ conda_envs/
 
 #Analysis results
 results/
+logs/
 
 #SLURM logs
 *.out
 *.err
 *.log
+log.txt
