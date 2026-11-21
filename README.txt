@@ -8,7 +8,7 @@ Organism:
 	Homo sapiens
 
 Reference genome:
-	GRCh38 (GENCODE relese 50)
+	GRCh38 (GENCODE release 50)
 
 Samples:
 	SRR1039512	GSM1275866	untreated	Control 
